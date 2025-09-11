@@ -19,6 +19,8 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "spi.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -50,7 +52,7 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+void SPI_TransmitReceive(uint8_t *txData, uint8_t *rxData, uint16_t size);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -65,7 +67,8 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+  uint8_t TxData[] = {0xAA, 0xBB, 0xCC}; // send data
+  uint8_t RxData[3]; // 8 bit transmit and receive buffers (24 bits total)
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -87,6 +90,9 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
+  MX_SPI1_Init();
+  MX_SPI2_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -95,6 +101,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
+    SPI_TransmitReceive(TxData, RxData, 3);
+
+
+
+	HAL_Delay(10);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -143,7 +155,15 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void SPI_TransmitReceive(uint8_t *txData, uint8_t *rxData, uint16_t size){
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET); // brings the CS line low before reading buffer
 
+	if(HAL_SPI_TransmitReceive(&hspi1, txData, rxData, size, HAL_MAX_DELAY) == HAL_OK){
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET); // brings the CS line high after reading buffer
+	}
+
+
+}
 /* USER CODE END 4 */
 
 /**
