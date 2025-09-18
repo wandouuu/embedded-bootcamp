@@ -53,6 +53,7 @@
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 void SPI_TransmitReceive(uint8_t *txData, uint8_t *rxData, uint16_t size);
+uint16_t filter_data(uint8_t *rxData);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -67,8 +68,13 @@ void SPI_TransmitReceive(uint8_t *txData, uint8_t *rxData, uint16_t size);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  uint8_t TxData[] = {0xAA, 0xBB, 0xCC}; // send data
+  uint8_t TxData[3]; // send data
   uint8_t RxData[3]; // 8 bit transmit and receive buffers (24 bits total)
+
+  TxData[0] = 0x01; // 7 leading zeros before first bit
+  TxData[1] = 0x80; // 1 0 0 0 X X X X
+  TxData[2] = 0x00; // X X X X X X X X
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -102,7 +108,8 @@ int main(void)
   while (1)
   {
 
-    SPI_TransmitReceive(TxData, RxData, 3);
+    SPI_TransmitReceive(TxData, RxData, 3); // transmit and receive data
+    filter_data(RxData); // filter the bits from reception line
 
 
 
@@ -158,11 +165,14 @@ void SystemClock_Config(void)
 void SPI_TransmitReceive(uint8_t *txData, uint8_t *rxData, uint16_t size){
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET); // brings the CS line low before reading buffer
 
-	if(HAL_SPI_TransmitReceive(&hspi1, txData, rxData, size, HAL_MAX_DELAY) == HAL_OK){
+	if(HAL_SPI_TransmitReceive(&hspi1, txData, rxData, size, HAL_MAX_DELAY) == HAL_OK){ // validates if data transmitted correctly
 		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET); // brings the CS line high after reading buffer
 	}
 
+}
 
+uint16_t filter_data(uint8_t *rxData){
+	return ((rxData[1] & 0x03 << 8) | rxData[2]);
 }
 /* USER CODE END 4 */
 
