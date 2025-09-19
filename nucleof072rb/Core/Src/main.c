@@ -74,7 +74,9 @@ int main(void)
   TxData[0] = 0x01; // 7 leading zeros before first bit
   TxData[1] = 0x80; // 1 0 0 0 X X X X
   TxData[2] = 0x00; // X X X X X X X X
-
+  uint16_t adc_max = 1023; // 10 bits --> max: 1023 bits
+  uint16_t min_duty_cycle = 0.05*65535;
+  uint16_t max_duty_cycle = 0.10*65535;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -101,6 +103,8 @@ int main(void)
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -109,9 +113,11 @@ int main(void)
   {
 
     SPI_TransmitReceive(TxData, RxData, 3); // transmit and receive data
-    filter_data(RxData); // filter the bits from reception line
+    uint16_t ADC_value = filter_data(RxData); // filter the bits from reception line
 
+    uint16_t compare_register = (min_duty_cycle) + (ADC_value/adc_max)*(max_duty_cycle - min_duty_cycle);
 
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, compare_register);
 
 	HAL_Delay(10);
     /* USER CODE END WHILE */
@@ -172,8 +178,10 @@ void SPI_TransmitReceive(uint8_t *txData, uint8_t *rxData, uint16_t size){
 }
 
 uint16_t filter_data(uint8_t *rxData){
-	return ((rxData[1] & 0x03 << 8) | rxData[2]);
+	return ((rxData[1] & 0x03) << 8) | rxData[2];
 }
+
+
 /* USER CODE END 4 */
 
 /**
