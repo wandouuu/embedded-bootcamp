@@ -177,10 +177,11 @@ uint8_t SPI_TransmitReceive(SPI_HandleTypeDef *hspi, uint8_t *txData, uint8_t *r
 	if(HAL_SPI_TransmitReceive(hspi, txData, rxData, size, timeout) == HAL_OK){ // validates if data transmitted correctly
 		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET); // brings the CS line high after reading buffer
 		return 1; // true
-	} else{
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET); // brings the CS line high if transmission fails
-		return 0; // false
 	}
+
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET); // brings the CS line high if transmission fails
+	return 0; // false
+
 
 }
 
