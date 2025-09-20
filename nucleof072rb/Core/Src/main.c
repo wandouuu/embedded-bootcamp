@@ -52,7 +52,7 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-void SPI_TransmitReceive(uint8_t *txData, uint8_t *rxData, uint16_t size);
+uint8_t SPI_TransmitReceive(SPI_HandleTypeDef *hspi, uint8_t *txData, uint8_t *rxData, uint16_t size, uint32_t timeout);
 uint16_t filter_data(uint8_t *rxData);
 /* USER CODE END PFP */
 
@@ -74,7 +74,7 @@ int main(void)
   TxData[0] = 0x01; // 7 leading zeros before first bit
   TxData[1] = 0x80; // 1 0 0 0 X X X X
   TxData[2] = 0x00; // X X X X X X X X
-  uint16_t adc_max = 1023; // 10 bits --> max: 1023 bits
+  double adc_max = 1023.0; // 10 bits --> max: 1023 bits
   uint16_t min_duty_cycle = 0.05*65535;
   uint16_t max_duty_cycle = 0.10*65535;
   /* USER CODE END 1 */
@@ -112,12 +112,15 @@ int main(void)
   while (1)
   {
 
-    SPI_TransmitReceive(TxData, RxData, 3); // transmit and receive data
-    uint16_t ADC_value = filter_data(RxData); // filter the bits from reception line
+    uint8_t is_transmitted = SPI_TransmitReceive(&hspi1, TxData, RxData, 3, HAL_MAX_DELAY); // transmit and receive data
+    if(is_transmitted == 1){
+    	uint16_t ADC_value = filter_data(RxData); // filter the bits from reception line
 
-    uint16_t compare_register = (min_duty_cycle) + (ADC_value/adc_max)*(max_duty_cycle - min_duty_cycle);
+    	uint16_t compare_register = (min_duty_cycle) + (ADC_value*(max_duty_cycle - min_duty_cycle))/adc_max;
 
-    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, compare_register);
+    	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, compare_register);
+    }
+
 
 	HAL_Delay(10);
     /* USER CODE END WHILE */
@@ -168,11 +171,15 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-void SPI_TransmitReceive(uint8_t *txData, uint8_t *rxData, uint16_t size){
+uint8_t SPI_TransmitReceive(SPI_HandleTypeDef *hspi, uint8_t *txData, uint8_t *rxData, uint16_t size, uint32_t timeout){
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET); // brings the CS line low before reading buffer
 
-	if(HAL_SPI_TransmitReceive(&hspi1, txData, rxData, size, HAL_MAX_DELAY) == HAL_OK){ // validates if data transmitted correctly
+	if(HAL_SPI_TransmitReceive(hspi, txData, rxData, size, timeout) == HAL_OK){ // validates if data transmitted correctly
 		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET); // brings the CS line high after reading buffer
+		return 1; // true
+	} else{
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET); // brings the CS line high if transmission fails
+		return 0; // false
 	}
 
 }
